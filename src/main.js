@@ -1,6 +1,6 @@
 import { OrbitControls } from "three/examples/jsm/Addons.js";
 import * as THREE from "three/webgpu";
-import { time, positionLocal, vec3, sin } from "three/tsl";
+import { time, positionLocal, vec3, sin, mix } from "three/tsl";
 
 const width = window.innerWidth;
 const height = window.innerHeight;
@@ -64,18 +64,26 @@ scene.add(directionalLight);
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
 scene.add(ambientLight);
 
-/* tsl */
+/* vertex shader tsl */
 const pulse = sin(time.mul(10)).mul(0.2).add(1);
 
 const localPosition = positionLocal;
 
 const displacePosition = vec3(
-  localPosition.x.mul(pulse),
+  localPosition.x,
   localPosition.y.mul(pulse),
-  localPosition.z,
+  localPosition.z.mul(pulse),
 );
 
 cylinderMaterial.positionNode = displacePosition;
+
+/* fragment shader tsl */
+const brightRed = vec3(1, 0, 0);
+const darkBlue = vec3(0, 0, 1);
+const colorFactor = sin(time.mul(15)).mul(0.5).add(0.5);
+const dynamicColor = mix(brightRed, darkBlue, colorFactor);
+
+cylinderMaterial.colorNode = dynamicColor;
 
 renderer.setAnimationLoop(animate);
 renderer.setSize(width, height);
