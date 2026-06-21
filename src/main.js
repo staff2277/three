@@ -1,102 +1,100 @@
-import { OrbitControls } from "three/examples/jsm/Addons.js";
-import * as THREE from "three/webgpu";
-import { time, positionLocal, vec3, sin, mix } from "three/tsl";
+import * as THREE from "three";
 
-const width = window.innerWidth;
-const height = window.innerHeight;
-
-/* Camera and Orbit Controls */
-
-const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-
-const renderer = new THREE.WebGPURenderer();
-const orbitControls = new OrbitControls(camera, renderer.domElement);
-orbitControls.enableDamping = true;
-orbitControls.dampingFactor = 0.05;
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x000000);
-
-camera.position.z = 5;
-
-/* Box */
-
-const boxGeometry = new THREE.BoxGeometry(2, 2, 2);
-const boxMaterial = new THREE.MeshStandardNodeMaterial({
-  color: 0x00ff00,
-  roughness: 0.7,
-});
-const box = new THREE.Mesh(boxGeometry, boxMaterial);
-
-/* Cylinder */
-
-const cylinderGeometry = new THREE.CylinderGeometry(0.7, 0.7, 1.5, 32);
-const cylinderMaterial = new THREE.MeshStandardNodeMaterial({
-  color: 0xff3333,
-  roughness: 0.4,
-});
-
-const cylinder = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
-cylinder.rotation.x = THREE.MathUtils.degToRad(90);
-cylinder.position.z = 0.5;
-
-/* knob */
-const knobGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.3, 32);
-const knobMaterial = new THREE.MeshStandardNodeMaterial({
-  color: 0xf0f000,
-});
-const knob = new THREE.Mesh(knobGeometry, knobMaterial);
-knob.rotation.x = THREE.MathUtils.degToRad(90);
-knob.position.set(0.6, 0.6, 1.1);
-
-/* speaker */
-const speaker = new THREE.Group();
-speaker.add(box);
-speaker.add(cylinder);
-speaker.add(knob);
-scene.add(speaker);
-
-/* Lighting */
-
-const directionalLight = new THREE.DirectionalLight(0xffffff, 4);
-directionalLight.position.set(5, 8, 5);
-scene.add(directionalLight);
-
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
-scene.add(ambientLight);
-
-/* vertex shader tsl */
-const pulse = sin(time.mul(10)).mul(0.2).add(1);
-
-const localPosition = positionLocal;
-
-const displacePosition = vec3(
-  localPosition.x,
-  localPosition.y.mul(pulse),
-  localPosition.z.mul(pulse),
+const camera = new THREE.PerspectiveCamera(
+  75,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  1000,
 );
 
-cylinderMaterial.positionNode = displacePosition;
-
-/* fragment shader tsl */
-const brightRed = vec3(1, 0, 0);
-const darkBlue = vec3(0, 0, 1);
-const colorFactor = sin(time.mul(15)).mul(0.5).add(0.5);
-const dynamicColor = mix(brightRed, darkBlue, colorFactor);
-
-cylinderMaterial.colorNode = dynamicColor;
-
-renderer.setAnimationLoop(animate);
-renderer.setSize(width, height);
-const clock = new THREE.Clock();
+// Create renderer
+const renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
+// Custom ShaderMaterial reproducing the NodeToy effect:
+// Vertex displacement along normals using sin(time * 5.0)
+const material = new THREE.ShaderMaterial({
+  uniforms: {
+    _time: { value: 0.0 },
+    ambientLightColor: { value: new THREE.Color(0x404040) },
+  },
+  vertexShader: /* glsl */ `
+    uniform float _time;
+
+    varying vec3 vNormal;
+    varying vec3 vViewPosition;
+
+    void main() {
+      vec3 objectNormal = normal;
+      vec3 transformedNormal = normalMatrix * objectNormal;
+      vNormal = normalize(transformedNormal);
+
+      // NodeToy displacement logic:
+      // sin(time * 5) pushes vertices along their normals
+      float wave = sin(_time * 5.0);
+      vec3 displaced = position + normal * wave;
+
+      vec4 mvPosition = modelViewMatrix * vec4(displaced, 1.0);
+      vViewPosition = -mvPosition.xyz;
+      gl_Position = projectionMatrix * mvPosition;
+    }
+  `,
+  fragmentShader: /* glsl */ `
+    varying vec3 vNormal;
+    varying vec3 vViewPosition;
+
+    void main() {
+      // Simple lit shading so the mesh is visible
+      vec3 normal = normalize(vNormal);
+      vec3 viewDir = normalize(vViewPosition);
+
+      // Basic directional light from camera direction
+      float diffuse = max(dot(normal, viewDir), 0.0);
+
+      // Ambient + diffuse
+      vec3 color = vec3(0.2) + vec3(1.0) * diffuse;
+      gl_FragColor = vec4(color, 1.0);
+    }
+  `,
+  lights: false,
+});
+
+// Create geometry and mesh
+const geometry = new THREE.BoxGeometry(1, 1, 1);
+const mesh = new THREE.Mesh(geometry, material);
+scene.add(mesh);
+camera.position.z = 2;
+
+// Create lights (still useful if you switch to a lit material later)
+const light = new THREE.AmbientLight(0x404040, 0.5);
+scene.add(light);
+
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+directionalLight.position.set(-10, -10, -5);
+scene.add(directionalLight);
+
+// Clock for time uniform
+const clock = new THREE.Clock();
+
+// Animate
 function animate() {
-  orbitControls.update();
+  requestAnimationFrame(animate);
+  mesh.rotation.x += 0.01;
+  mesh.rotation.y += 0.01;
+
+  // Update time uniform (replaces NodeToyMaterial.tick())
+  material.uniforms._time.value = clock.getElapsedTime();
+
   renderer.render(scene, camera);
 }
+animate();
 
-window.addEventListener("resize", () => {
+// On resize window
+function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-});
+}
+window.addEventListener("resize", onWindowResize);
