@@ -1,6 +1,23 @@
 import * as THREE from "three";
+import {
+  WebGPURenderer,
+  MeshStandardNodeMaterial,
+  MeshPhysicalNodeMaterial,
+} from "three/webgpu";
+import { positionLocal, normalLocal, sin, time } from "three/tsl";
+import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 const scene = new THREE.Scene();
+
+new RGBELoader().load("/sunny.hdr", function (texture) {
+  texture.mapping = THREE.EquirectangularReflectionMapping;
+  scene.background = new THREE.Color(0x000000);
+  scene.environment = texture;
+});
+
+scene.background = new THREE.Color(0x000000);
+
 const camera = new THREE.PerspectiveCamera(
   75,
   window.innerWidth / window.innerHeight,
@@ -8,88 +25,73 @@ const camera = new THREE.PerspectiveCamera(
   1000,
 );
 
-// Create renderer
-const renderer = new THREE.WebGLRenderer();
+// Create WebGPURenderer (required for TSL nodes)
+const renderer = new WebGPURenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// Custom ShaderMaterial reproducing the NodeToy effect:
-// Vertex displacement along normals using sin(time * 5.0)
-const material = new THREE.ShaderMaterial({
-  uniforms: {
-    _time: { value: 0.0 },
-    ambientLightColor: { value: new THREE.Color(0x404040) },
-  },
-  vertexShader: /* glsl */ `
-    uniform float _time;
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
 
-    varying vec3 vNormal;
-    varying vec3 vViewPosition;
+// Create geometry - make it non-indexed so faces separate, and compute flat normals
+let geometry = new THREE.IcosahedronGeometry(1, 2).toNonIndexed();
+geometry.computeVertexNormals();
 
-    void main() {
-      vec3 objectNormal = normal;
-      vec3 transformedNormal = normalMatrix * objectNormal;
-      vNormal = normalize(transformedNormal);
-
-      // NodeToy displacement logic:
-      // sin(time * 5) pushes vertices along their normals
-      float wave = sin(_time * 5.0);
-      vec3 displaced = position + normal * wave;
-
-      vec4 mvPosition = modelViewMatrix * vec4(displaced, 1.0);
-      vViewPosition = -mvPosition.xyz;
-      gl_Position = projectionMatrix * mvPosition;
-    }
-  `,
-  fragmentShader: /* glsl */ `
-    varying vec3 vNormal;
-    varying vec3 vViewPosition;
-
-    void main() {
-      // Simple lit shading so the mesh is visible
-      vec3 normal = normalize(vNormal);
-      vec3 viewDir = normalize(vViewPosition);
-
-      // Basic directional light from camera direction
-      float diffuse = max(dot(normal, viewDir), 0.0);
-
-      // Ambient + diffuse
-      vec3 color = vec3(0.2) + vec3(1.0) * diffuse;
-      gl_FragColor = vec4(color, 1.0);
-    }
-  `,
-  lights: false,
+// Create TSL Node Material
+let material = new MeshStandardNodeMaterial({
+  side: THREE.DoubleSide,
+  transparent: true,
+  roughness: 0.4,
+  color: 0x000000,
+  metalness: 0,
 });
 
-// Create geometry and mesh
-const geometry = new THREE.BoxGeometry(1, 1, 1);
-const mesh = new THREE.Mesh(geometry, material);
+// TSL: Move all faces uniformly in sync
+const displacementAmount = sin(time.mul(5.0)).mul(0.5).add(0.5); // scaled by 0.2 for better aesthetics
+
+// Move all vertices along their normals. Since they are non-indexed, they separate!
+material.positionNode = positionLocal.add(normalLocal.mul(displacementAmount));
+
+// Create mesh
+let mesh = new THREE.Mesh(geometry, material);
 scene.add(mesh);
-camera.position.z = 2;
 
-// Create lights (still useful if you switch to a lit material later)
-const light = new THREE.AmbientLight(0x404040, 0.5);
+// Create power core
+const coreGeometry = new THREE.SphereGeometry(0.7, 32, 16);
+const coreColor = new THREE.Color(0xff26ff);
+const coreMaterial = new THREE.MeshStandardMaterial({
+  color: coreColor,
+  emissive: coreColor,
+  emissiveIntensity: 10.0,
+  roughness: 0.0,
+  metalness: 0,
+});
+const coreMesh = new THREE.Mesh(coreGeometry, coreMaterial);
+scene.add(coreMesh);
+
+// Add PointLight for the core
+const coreLight = new THREE.PointLight(coreColor, 1000, 100);
+scene.add(coreLight);
+
+camera.position.z = 4;
+
+// Create lights
+const light = new THREE.AmbientLight(0xffffff, 0.5); // soft white light
 scene.add(light);
-
+/* 
 const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
 directionalLight.position.set(-10, -10, -5);
-scene.add(directionalLight);
+scene.add(directionalLight); */
 
-// Clock for time uniform
-const clock = new THREE.Clock();
-
-// Animate
+// Animate using renderer.setAnimationLoop
 function animate() {
-  requestAnimationFrame(animate);
   mesh.rotation.x += 0.01;
   mesh.rotation.y += 0.01;
-
-  // Update time uniform (replaces NodeToyMaterial.tick())
-  material.uniforms._time.value = clock.getElapsedTime();
-
-  renderer.render(scene, camera);
+  controls.update();
+  renderer.renderAsync(scene, camera);
 }
-animate();
+renderer.setAnimationLoop(animate);
 
 // On resize window
 function onWindowResize() {
