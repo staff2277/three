@@ -35,7 +35,7 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 
 // Create geometry - make it non-indexed so faces separate, and compute flat normals
-let geometry = new THREE.SphereGeometry(1, 64, 32).toNonIndexed();
+let geometry = new THREE.SphereGeometry(2, 124, 124).toNonIndexed();
 geometry.computeVertexNormals();
 
 const hoverArray = new Float32Array(geometry.attributes.position.count);
@@ -50,12 +50,14 @@ let material = new MeshStandardNodeMaterial({
   metalness: 0,
 });
 
+const coreColor = new THREE.Color(0x0382e7);
+
 let wireframeMaterial = new MeshStandardNodeMaterial({
   side: THREE.DoubleSide,
   transparent: true,
   wireframe: true,
   color: 0x000000,
-  emissive: 0xff26ff,
+  emissive: coreColor,
   emissiveIntensity: 5.0,
 });
 
@@ -82,12 +84,11 @@ let wireframeMesh = new THREE.Mesh(geometry, wireframeMaterial);
 scene.add(wireframeMesh);
 
 // Create power core
-const coreGeometry = new THREE.SphereGeometry(0.4, 32, 16);
-const coreColor = new THREE.Color(0xff26ff);
+const coreGeometry = new THREE.SphereGeometry(1, 32, 32);
 const coreMaterial = new THREE.MeshStandardMaterial({
   color: coreColor,
   emissive: coreColor,
-  emissiveIntensity: 10.0,
+  emissiveIntensity: 50.0,
   roughness: 0.0,
   metalness: 0,
 });
@@ -101,7 +102,7 @@ scene.add(coreLight);
 camera.position.z = 4;
 
 // Create lights
-const light = new THREE.AmbientLight(0xffffff, 0.5); // soft white light
+const light = new THREE.AmbientLight(coreColor, 0.5); // soft white light
 scene.add(light);
 /* 
 const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
@@ -117,9 +118,11 @@ window.addEventListener("pointermove", (event) => {
   pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
 });
 
+let hoverStrength = 0.0;
+
 // Animate using renderer.setAnimationLoop
 function animate() {
-  // mesh.rotation.x += 0.01;
+  //mesh.rotation.x += 0.01;
   // mesh.rotation.y += 0.01;
   controls.update();
 
@@ -133,15 +136,37 @@ function animate() {
     mesh.worldToLocal(localPoint);
   }
 
+  // Smoothly track hover state
+  hoverStrength += ((isHovered ? 1.0 : 0.0) - hoverStrength) * 0.1;
+
+  // Calculate pulse based on time (1 beat per 3 seconds)
+  const timeNow = performance.now() / 1000.0;
+  const pulseFreq = (2 * Math.PI) / 3.0; // One full sine cycle every 3 seconds
+  // pulse value between 0.0 and 1.0
+  const pulse = (Math.sin(timeNow * pulseFreq) + 1.0) * 0.5;
+
+  // 1. Core mesh scales up and down like a pulsing heart
+  const pulseScale = 1.0 + pulse * 0.3 * hoverStrength;
+  coreMesh.scale.set(pulseScale, pulseScale, pulseScale);
+
+  // 3. Core color changes dynamically in shade with the pulse
+  const highlightColor = new THREE.Color(0xffffff);
+  coreMaterial.color.copy(coreColor).lerp(highlightColor, pulse * 0.6 * hoverStrength);
+  coreMaterial.emissive.copy(coreColor).lerp(highlightColor, pulse * 0.6 * hoverStrength);
+  coreLight.intensity = 1000 * (1.0 + pulse * 0.5 * hoverStrength);
+
   const hoverAttribute = mesh.geometry.attributes.hover;
   const positions = mesh.geometry.attributes.position.array;
   const radius = 0.4;
 
   for (let i = 0; i < hoverAttribute.count; i += 3) {
-    let target = 0.0;
+    let target0 = 0.0;
+    let target1 = 0.0;
+    let target2 = 0.0;
 
     if (isHovered) {
-      target = 0.2; // uniform displacement for all faces when hovered
+      // 2. Individual faces move along the normal in tune with pulse
+      let target = 0.2 + pulse * 0.15; // Add pulse to base displacement
 
       // Calculate center of this face
       const cx =
@@ -169,11 +194,20 @@ function animate() {
         const falloff = Math.cos((dist / radius) * (Math.PI / 2)); // smooth circular falloff
         target += 0.5 * falloff; // +0.5 units higher
       }
+
+      // Add a unique tilt to each vertex of the face to make it look non-flat
+      // We use the face index 'i' to seed a pseudo-random-looking tilt
+      const tiltStrength = 0.08;
+      target0 = target + Math.sin(i * 12.34) * tiltStrength;
+      target1 = target + Math.sin(i * 12.34 + 2.0) * tiltStrength;
+      target2 = target + Math.sin(i * 12.34 + 4.0) * tiltStrength;
     }
 
-    hoverAttribute.array[i] += (target - hoverAttribute.array[i]) * 0.1;
-    hoverAttribute.array[i + 1] += (target - hoverAttribute.array[i + 1]) * 0.1;
-    hoverAttribute.array[i + 2] += (target - hoverAttribute.array[i + 2]) * 0.1;
+    hoverAttribute.array[i] += (target0 - hoverAttribute.array[i]) * 0.1;
+    hoverAttribute.array[i + 1] +=
+      (target1 - hoverAttribute.array[i + 1]) * 0.1;
+    hoverAttribute.array[i + 2] +=
+      (target2 - hoverAttribute.array[i + 2]) * 0.1;
   }
   hoverAttribute.needsUpdate = true;
 
