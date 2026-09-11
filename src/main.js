@@ -2,9 +2,12 @@ import * as THREE from "three";
 
 const scene = new THREE.Scene();
 
+const windowWidth = window.innerWidth;
+const windowHeight = window.innerHeight;
+
 const sizes = {
-  windowWidth: window.innerWidth,
-  windowHeight: window.innerHeight,
+  windowWidth,
+  windowHeight,
   aspectRatio: windowWidth / windowHeight,
 };
 
