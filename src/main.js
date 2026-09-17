@@ -1,54 +1,24 @@
 import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { OrbitControls } from "three/examples/jsm/Addons.js";
 
 const scene = new THREE.Scene();
 
+//Sizes
+const windowWidth = window.innerWidth;
+const windowHeight = window.innerHeight;
 const sizes = {
-  windowWidth: window.innerWidth,
-  windowHeight: window.innerHeight,
+  windowWidth,
+  windowHeight,
+  aspectRatio: windowWidth / windowHeight,
 };
-let aspectRatio = sizes.windowWidth / sizes.windowHeight;
 
 //Camera
-const camera = new THREE.PerspectiveCamera(75, aspectRatio, 1, 200);
+const camera = new THREE.PerspectiveCamera(75, sizes.aspectRatio, 1, 200);
 camera.position.z = 3;
-/* const camera = new THREE.OrthographicCamera(
-  -1 * aspectRatio,
-  1 * aspectRatio,
-  1,
-  -1,
-  1,
-  200,
-); */
-const cursor = {
-  x: 0,
-  y: 0,
-};
-
-window.addEventListener("mousemove", (move) => {
-  cursor.x = (move.clientX / window.innerWidth) * 2 - 1;
-  cursor.y = (move.clientY / window.innerHeight) * -2 + 1;
-});
 
 //Mesh
-/* const boxGeometry = new THREE.BoxGeometry();
-const boxMaterial = new THREE.MeshBasicMaterial({ color: "green" });
-const boxMesh = new THREE.Mesh(boxGeometry, boxMaterial);
-scene.add(boxMesh); */
-
-//BufferGeometry
-const geometry = new THREE.BufferGeometry();
-const vertexPositions = new Float32Array([
-  0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0,
-]);
-geometry.setAttribute(
-  "position",
-  new THREE.BufferAttribute(vertexPositions, 3),
-);
-const material = new THREE.MeshBasicMaterial({
-  color: "yellow",
-  wireframe: true,
-});
+const geometry = new THREE.BoxGeometry(1, 1, 1);
+const material = new THREE.MeshBasicMaterial({ color: "yellow" });
 const mesh = new THREE.Mesh(geometry, material);
 scene.add(mesh);
 
@@ -56,33 +26,32 @@ scene.add(mesh);
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(sizes.windowWidth, sizes.windowHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-const controls = new OrbitControls(camera, renderer.domElement);
-renderer.render(scene, camera);
 
-function animate(timeStamp) {
+//Controls
+//const orbitControls = new OrbitControls(camera, renderer.domElement);
+
+const mouse = {
+  x: 0,
+  y: 0,
+};
+//Events
+window.addEventListener("mousemove", (e) => {
+  mouse.x = (e.clientX / sizes.windowWidth) * 2 - 1;
+  mouse.y = (e.clientY / sizes.windowHeight) * -2 + 1;
+});
+
+const targetPosition = new THREE.Vector3();
+function animate() {
   requestAnimationFrame(animate);
-  controls.update();
+  targetPosition.set(mouse.x * 3, mouse.y * 3, camera.position.z);
+  camera.position.lerp(targetPosition, 0.05);
+  camera.lookAt(mesh.position);
   camera.updateProjectionMatrix();
+  // orbitControls.update();
+
   renderer.render(scene, camera);
 }
 animate();
 
-//Events
-window.addEventListener("resize", () => {
-  sizes.windowWidth = window.innerWidth;
-  sizes.windowHeight = window.innerHeight;
-  aspectRatio = sizes.windowWidth / sizes.windowHeight;
-  camera.aspect = sizes.windowWidth / sizes.windowHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(sizes.windowWidth, sizes.windowHeight);
-});
-let canvas = renderer.domElement;
-window.addEventListener("dblclick", () => {
-  if (document.fullscreenElement === canvas) {
-    document.exitFullscreen();
-  } else {
-    canvas.requestFullscreen();
-  }
-});
-
-document.body.appendChild(renderer.domElement);
+renderer.render(scene, camera);
+const canvas = document.body.appendChild(renderer.domElement);
