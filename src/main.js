@@ -44,26 +44,31 @@ const fontLoader = new FontLoader();
 const ttfLoader = new TTFLoader();
 const fontData = await ttfLoader.loadAsync("/font/jRobot.ttf");
 const jRobotFont = new Font(fontData);
-const textGeometry = new TextGeometry("TryTwo", {
+const textGeometry = new TextGeometry("work\nwith me", {
   font: jRobotFont,
   size: 2,
   depth: 1,
-  curveSegments: 1,
+  curveSegments: 12,
+  bevelEnabled: true,
+  bevelThickness: 0.2,
+  bevelSize: 0.1,
+  bevelSegments: 5,
 });
 const normalMaterial = new MeshNormalMaterial();
 const textMesh = new THREE.Mesh(textGeometry, normalMaterial);
-textMesh.position.x = -6.8;
+textMesh.position.x = 0;
+textGeometry.center();
 
 //Instanced Meshes
-const boxGeometry = new THREE.BoxGeometry(2, 2, 2);
-const count = 30;
+const boxGeometry = new THREE.BoxGeometry(1.5, 1.5, 1.5);
+const count = 500;
 const boxInstance = new THREE.InstancedMesh(boxGeometry, normalMaterial, count);
 
 const boxObject = new THREE.Object3D();
 for (let i = 0; i < count; i++) {
-  boxObject.position.x = (Math.random() - 0.5) * 30;
-  boxObject.position.y = (Math.random() - 0.5) * 30;
-  boxObject.position.z = (Math.random() - 0.5) * 30;
+  boxObject.position.x = (Math.random() - 0.5) * 100;
+  boxObject.position.y = (Math.random() - 0.5) * 100;
+  boxObject.position.z = (Math.random() - 0.5) * 100;
 
   boxObject.rotation.x = THREE.MathUtils.degToRad((Math.random() - 0.5) * 360);
   boxObject.rotation.y = THREE.MathUtils.degToRad((Math.random() - 0.5) * 360);
@@ -74,7 +79,7 @@ for (let i = 0; i < count; i++) {
   boxInstance.setMatrixAt(i, boxObject.matrix);
 }
 
-const torusGeometry = new THREE.TorusGeometry();
+const torusGeometry = new THREE.TorusGeometry(1, 0.7, 13, 48);
 const torusInstance = new THREE.InstancedMesh(
   torusGeometry,
   normalMaterial,
@@ -82,9 +87,9 @@ const torusInstance = new THREE.InstancedMesh(
 );
 const torusObject = new THREE.Object3D();
 for (let i = 0; i < count; i++) {
-  torusObject.position.x = (Math.random() - 0.5) * count;
-  torusObject.position.y = (Math.random() - 0.5) * count;
-  torusObject.position.z = (Math.random() - 0.5) * count;
+  torusObject.position.x = (Math.random() - 0.5) * 70;
+  torusObject.position.y = (Math.random() - 0.5) * 70;
+  torusObject.position.z = (Math.random() - 0.5) * 70;
 
   torusObject.rotation.x = THREE.MathUtils.degToRad(
     (Math.random() - 0.5) * 360,
@@ -101,15 +106,11 @@ for (let i = 0; i < count; i++) {
   torusInstance.setMatrixAt(i, torusObject.matrix);
 }
 
+const meshGroup = new THREE.Group();
+meshGroup.add(torusInstance, boxInstance);
+
 //Objects in scene
-scene.add(
-  directionalLight,
-  ambientLight,
-  textMesh,
-  axesHelper,
-  boxInstance,
-  torusInstance,
-);
+scene.add(directionalLight, ambientLight, textMesh, axesHelper, meshGroup);
 
 //Mouse
 const mouse = {
@@ -133,6 +134,7 @@ const cameraTarget = new THREE.Vector3();
 
 function animate(tick) {
   requestAnimationFrame(animate);
+  timer.update(tick);
   const elapsedTime = timer.getElapsed();
   const delta = timer.getDelta();
 
@@ -141,9 +143,14 @@ function animate(tick) {
   cameraTarget.z = camera.position.z;
 
   camera.position.lerp(cameraTarget, 0.05);
-  camera.lookAt(0, 0, 0);
+  camera.lookAt(textMesh.position);
 
-  timer.update(tick);
+  textMesh.rotation.x = Math.sin(elapsedTime * 0.8) * 0.125;
+  textMesh.rotation.z = Math.cos(elapsedTime * 0.8) * 0.125;
+
+  meshGroup.rotation.x = Math.sin(elapsedTime * 0.8) * 0.25;
+  meshGroup.rotation.y = Math.cos(elapsedTime * 0.8) * 0.25;
+  meshGroup.rotation.z = Math.cos(elapsedTime * 0.8) * 0.25;
 
   // orbitControls.update();
   renderer.render(scene, camera);
