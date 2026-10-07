@@ -13,64 +13,9 @@ camera.position.z = 12;
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const canvas = document.body.appendChild(renderer.domElement);
 
-const plane = new THREE.Mesh(
-  new THREE.PlaneGeometry(12, 12),
-  new THREE.MeshStandardMaterial({ side: THREE.DoubleSide }),
-);
-
-plane.rotation.x = THREE.MathUtils.degToRad(-90);
-plane.receiveShadow = true;
-
-/* const particleKnot = new THREE.Points(
-  new THREE.TorusKnotGeometry(),
-  new THREE.PointsMaterial(),
-);
-
-particleKnot.position.y = 1.8;
-particleKnot.castShadow = true;
-particleKnot.material.size = 0.05;
-particleKnot.material.sizeAttenuation = true
- */
-
-const count = 100;
-const arr = [];
-const arrCol = [];
-for (let i = 0; i <= count; i++) {
-  let x = i;
-  let y = 0;
-  const z = i;
-  for (let j = 0; j <= count; j++) {
-    y = j;
-    arr.push(
-      (x * 2 - count) * Math.random(),
-      (y * 2 - count) * Math.random(),
-      (z * 2 - count) * Math.random(),
-    );
-    arrCol.push(0.5 * Math.random(), Math.random(), Math.random());
-  }
-}
-
-const pointVerts = new Float32Array(arr);
-const colVerts = new Float32Array(arrCol);
-
-const pointGeometry = new THREE.BufferGeometry();
-pointGeometry.setAttribute(
-  "position",
-  new THREE.BufferAttribute(pointVerts, 3),
-);
-pointGeometry.setAttribute("color", new THREE.BufferAttribute(colVerts, 3));
-
-const pointMaterial = new THREE.PointsMaterial();
-pointMaterial.size = 0.05;
-pointMaterial.vertexColors = true;
-console.log();
-
-const particles = new THREE.Points(pointGeometry, pointMaterial);
 /*
  *
  *Lighting
@@ -78,46 +23,92 @@ const particles = new THREE.Points(pointGeometry, pointMaterial);
  */
 const ambientlight = new THREE.AmbientLight(0xffffff, 0.1);
 const directionalLight = new THREE.DirectionalLight();
-directionalLight.position.y = 5;
-directionalLight.position.x = 3;
-directionalLight.castShadow = true;
-directionalLight.shadow.mapSize.width = 1024;
-directionalLight.shadow.mapSize.height = 1024;
-directionalLight.shadow.camera.far = 8;
-directionalLight.shadow.radius = 1;
 
 const dLightHelper = new THREE.DirectionalLightHelper(directionalLight, 3);
-const dLightCameraHelper = new THREE.CameraHelper(
-  directionalLight.shadow.camera,
-);
+
 const axesHelper = new THREE.AxesHelper(10);
 
 const orbitControls = new OrbitControls(camera, renderer.domElement);
+
+const particleGeometry = new THREE.BufferGeometry();
+const vertArray = [];
+const vertcolor = [];
+const vertCount = 100;
+
+const colorInside = new THREE.Color("#ff6030");
+const colorOutside = new THREE.Color("#1b3984");
+
+for (let i = 0; i < vertCount; i++) {
+  const radius = i * 0.2;
+  const angle = i * 0.2;
+  const x = Math.cos(angle) * radius;
+  const z = Math.sin(angle) * radius;
+  vertArray.push(x, 0, z);
+
+  const radiusRatio = Math.min(radius / ((vertCount - 1) * 0.2), 1);
+  const mixedColor = colorInside.clone().lerp(colorOutside, radiusRatio);
+  vertcolor.push(mixedColor.r, mixedColor.g, mixedColor.b);
+}
+
+const particleVerts = new Float32Array(vertArray);
+const particleColor = new Float32Array(vertcolor);
+particleGeometry.setAttribute(
+  "position",
+  new THREE.BufferAttribute(particleVerts, 3),
+);
+particleGeometry.setAttribute(
+  "color",
+  new THREE.BufferAttribute(particleColor, 3),
+);
+
+const particleMaterial = new THREE.PointsMaterial();
+particleMaterial.vertexColors = true;
+particleMaterial.size = 0.001;
+const curveCount = 3;
+
+const particleGroup = new THREE.Group();
+for (let i = 1; i <= curveCount; i++) {
+  const particles = new THREE.Points(particleGeometry, particleMaterial);
+  particles.rotation.y = THREE.MathUtils.degToRad(i * (360 / curveCount));
+  particleGroup.add(particles);
+}
+
+const groupCount = 100;
+const galaxy = new THREE.Group();
+
+for (let i = 0; i < groupCount; i++) {
+  const group = particleGroup.clone();
+  group.rotation.x = Math.random() * i * 0.01;
+  group.rotation.y = Math.random() * i * 0.01;
+  group.rotation.z = Math.random() * i * 0.01;
+
+  galaxy.add(group);
+}
+
+for (let i = 0; i < 10; i++) {
+  const group = galaxy.clone();
+
+  scene.add(group);
+}
+
+console.log(galaxy);
+
 /*
  *
  *Scene Objects
  *
  */
 
-scene.add(
-  plane,
-  // particleKnot,
-  ambientlight,
-  directionalLight,
-  particles,
-  axesHelper,
-  //dLightHelper,
-  //dLightCameraHelper,
-);
+scene.add(ambientlight, directionalLight, axesHelper);
 
 /*
  *
  *Renderer
  *
  */
-
-function animate() {
+function animate(time) {
   requestAnimationFrame(animate);
+  const elapsedTime = time * 0.001;
   orbitControls.update();
   renderer.render(scene, camera);
 }
