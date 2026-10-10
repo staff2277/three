@@ -1,19 +1,39 @@
-*
-{
-    margin: 0;
-    padding: 0;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
 }
 
-html,
-body
-{
-    overflow: hidden;
+/* html,
+body {
+  overflow: hidden;
+} */
+
+.webgl {
+  position: fixed;
+  top: 0;
+  left: 0;
+  outline: none;
+  border: 5px solid rgb(4, 255, 0);
 }
 
-.webgl
-{
-    position: fixed;
-    top: 0;
-    left: 0;
-    outline: none;
+.section {
+  display: flex;
+  align-items: center;
+  height: 100vh;
+  border: 2px solid rgb(13, 0, 255);
+  position: relative;
+  font-family: "Cabin", sans-serif;
+  color: #ffeded;
+  text-transform: uppercase;
+  font-size: 7vmin;
+  padding-left: 10%;
+  padding-right: 10%;
+}
+
+section:nth-child(odd) {
+  justify-content: flex-end;
 }

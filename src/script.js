@@ -1,100 +1,120 @@
+import "./style.css";
 import * as THREE from "three";
 
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(
-  75,
-  window.innerWidth / window.innerHeight,
-  1,
-  200,
-);
-camera.position.z = 5;
-
-/* 
-*
-Renderer
-*
-*/
-
-const renderer = new THREE.WebGLRenderer();
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-const canvas = document.body.appendChild(renderer.domElement);
-
-/*
- *
- *Boxes
- *
+/**
+ * Debug
  */
 
-const box1 = new THREE.Mesh(
-  new THREE.BoxGeometry(),
-  new THREE.MeshBasicMaterial({ color: "yellow" }),
-);
-box1.position.set(-3, 0, 0);
-
-const box2 = new THREE.Mesh(
-  new THREE.BoxGeometry(),
-  new THREE.MeshBasicMaterial({ color: "blue" }),
-);
-box2.position.set(0, 0, 0);
-const box3 = new THREE.Mesh(
-  new THREE.BoxGeometry(),
-  new THREE.MeshBasicMaterial({ color: "green" }),
-);
-box3.position.set(3, 0, 0);
-
-/*
- *
- *Scene objects
- *
+/**
+ * Base
  */
+// Canvas
+const canvas = document.querySelector("canvas.webgl");
 
-/*
- *
- *Raycaster
- *
- */
-const raycaster = new THREE.Raycaster();
-
-const rayOrigin = new THREE.Vector3(-4, 0, 0);
-const rayDirection = new THREE.Vector3(10, 0, 0);
-rayDirection.normalize();
-
-/* raycaster.set(rayOrigin, rayDirection);
-const intersect = raycaster.intersectObject(box1); */
-
-const arrowHelper = new THREE.ArrowHelper(
-  rayDirection,
-  rayOrigin,
-  10,
-  "#FF0000",
-);
-//console.log(intersect);
-
-scene.add(box1, box2, box3, arrowHelper);
-function animate(time) {
-  const elapsedTime = time * 0.001;
-  requestAnimationFrame(animate);
-  box1.position.y = Math.sin(elapsedTime) * 2;
-  box2.position.y = Math.sin(elapsedTime * 0.5) * 2;
-  box3.position.y = Math.sin(elapsedTime * 0.3) * 2;
-
-  raycaster.set(rayOrigin, rayDirection);
-  const intersect = raycaster.intersectObjects([box1, box2, box3]);
-  if (intersect.length === 0) {
-    box1.material.color = new THREE.Color("yellow");
-    box2.material.color = new THREE.Color("blue");
-    box3.material.color = new THREE.Color("green");
-  } else if (intersect.length > 0) {
-    const numberOfObjects = intersect.length / 2;
-    for (let i = 0; i < numberOfObjects; i++) {
-      let j = i * 2;
-      intersect[j].object.material.color = new THREE.Color("red");
-    }
-  }
-
-  renderer.render(scene, camera);
+if ("scrollRestoration" in history) {
+  history.scrollRestoration = "manual";
 }
-animate();
 
-renderer.render(scene, camera);
+// Scene
+const scene = new THREE.Scene();
+
+/**
+ * Objects
+ */
+let meshDistance = 6;
+const material = new THREE.MeshNormalMaterial();
+
+const torus = new THREE.Mesh(new THREE.TorusGeometry(1, 0.4, 16, 60), material);
+torus.position.x = 3;
+
+const cone = new THREE.Mesh(new THREE.ConeGeometry(1, 2, 32), material);
+cone.position.x = -3;
+cone.position.y = -meshDistance * 1;
+
+const torusKnot = new THREE.Mesh(
+  new THREE.TorusKnotGeometry(0.8, 0.35, 100, 16),
+  material,
+);
+torusKnot.position.x = 3;
+torusKnot.position.y = -meshDistance * 2;
+
+/**
+ * Sizes
+ */
+const sizes = {
+  width: window.innerWidth,
+  height: window.innerHeight,
+};
+const deviceHeight = 0;
+
+window.addEventListener("resize", () => {
+  // Update sizes
+  sizes.width = window.innerWidth;
+  sizes.height = window.innerHeight;
+  deviceHeight = (sizes.height / sizes.height) * 8;
+  // Update camera
+  camera.aspect = sizes.width / sizes.height;
+  camera.updateProjectionMatrix();
+
+  // Update renderer
+  renderer.setSize(sizes.width, sizes.height);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+});
+
+/**
+ * Camera
+ */
+// Base camera
+const camera = new THREE.PerspectiveCamera(
+  35,
+  sizes.width / sizes.height,
+  0.1,
+  100,
+);
+camera.position.z = 11;
+
+scene.add(camera, torus, cone, torusKnot);
+
+const meshes = [torus, cone, torusKnot];
+
+/* meshes.map((mesh) => {
+  mesh.position.y *= meshDistance;
+  console.log(mesh);
+
+  scene.add(mesh);
+});
+ */
+const scroll = {};
+scroll.y = window.scrollY;
+
+window.addEventListener("scroll", () => {
+  const y = window.scrollY;
+  scroll.y = (-y / sizes.height) * meshDistance;
+  console.log(scroll);
+});
+
+/**
+ * Renderer
+ */
+const renderer = new THREE.WebGLRenderer({
+  canvas: canvas,
+});
+renderer.setSize(sizes.width, sizes.height);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+/**
+ * Animate
+ */
+const clock = new THREE.Clock();
+
+const tick = () => {
+  const elapsedTime = clock.getElapsedTime();
+  camera.position.y = scroll.y;
+  // Render
+  renderer.render(scene, camera);
+  window.requestAnimationFrame(tick);
+
+  // Call tick again on the next frame
+};
+
+tick();
