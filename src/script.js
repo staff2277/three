@@ -1,120 +1,54 @@
-import "./style.css";
 import * as THREE from "three";
+import * as CANNON from "cannon-es";
+import { OrbitControls } from "three/examples/jsm/Addons.js";
 
-/**
- * Debug
- */
-
-/**
- * Base
- */
-// Canvas
-const canvas = document.querySelector("canvas.webgl");
-
-if ("scrollRestoration" in history) {
-  history.scrollRestoration = "manual";
-}
-
-// Scene
 const scene = new THREE.Scene();
-
-/**
- * Objects
- */
-let meshDistance = 6;
-const material = new THREE.MeshNormalMaterial();
-
-const torus = new THREE.Mesh(new THREE.TorusGeometry(1, 0.4, 16, 60), material);
-torus.position.x = 3;
-
-const cone = new THREE.Mesh(new THREE.ConeGeometry(1, 2, 32), material);
-cone.position.x = -3;
-cone.position.y = -meshDistance * 1;
-
-const torusKnot = new THREE.Mesh(
-  new THREE.TorusKnotGeometry(0.8, 0.35, 100, 16),
-  material,
-);
-torusKnot.position.x = 3;
-torusKnot.position.y = -meshDistance * 2;
-
-/**
- * Sizes
- */
-const sizes = {
-  width: window.innerWidth,
-  height: window.innerHeight,
-};
-const deviceHeight = 0;
-
-window.addEventListener("resize", () => {
-  // Update sizes
-  sizes.width = window.innerWidth;
-  sizes.height = window.innerHeight;
-  deviceHeight = (sizes.height / sizes.height) * 8;
-  // Update camera
-  camera.aspect = sizes.width / sizes.height;
-  camera.updateProjectionMatrix();
-
-  // Update renderer
-  renderer.setSize(sizes.width, sizes.height);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-});
-
-/**
- * Camera
- */
-// Base camera
 const camera = new THREE.PerspectiveCamera(
-  35,
-  sizes.width / sizes.height,
-  0.1,
-  100,
+  75,
+  window.innerWidth / window.innerHeight,
+  1,
+  500,
 );
-camera.position.z = 11;
+camera.position.z = 3;
 
-scene.add(camera, torus, cone, torusKnot);
+const world = new CANNON.World();
+world.gravity = new CANNON.Vec3(0, -9.28, 0);
 
-const meshes = [torus, cone, torusKnot];
-
-/* meshes.map((mesh) => {
-  mesh.position.y *= meshDistance;
-  console.log(mesh);
-
-  scene.add(mesh);
-});
- */
-const scroll = {};
-scroll.y = window.scrollY;
-
-window.addEventListener("scroll", () => {
-  const y = window.scrollY;
-  scroll.y = (-y / sizes.height) * meshDistance;
-  console.log(scroll);
+const canShape = new CANNON.Vec3(0.5, 0.5, 0.5);
+const canBox = new CANNON.Box(canShape);
+const canBody = new CANNON.Body({
+  mass: 1,
+  shape: canBox,
 });
 
-/**
- * Renderer
- */
-const renderer = new THREE.WebGLRenderer({
-  canvas: canvas,
-});
-renderer.setSize(sizes.width, sizes.height);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+canBody.position.y = 5;
 
-/**
- * Animate
- */
-const clock = new THREE.Clock();
+world.addBody(canBody);
 
-const tick = () => {
-  const elapsedTime = clock.getElapsedTime();
-  camera.position.y = scroll.y;
-  // Render
+const renderer = new THREE.WebGLRenderer();
+renderer.setPixelRatio(Math.min(1, window.devicePixelRatio));
+renderer.setSize(window.innerWidth, window.innerHeight);
+const canvas = document.body.appendChild(renderer.domElement);
+
+const orbitControls = new OrbitControls(camera, canvas);
+orbitControls.update();
+
+const boxMesh = new THREE.Mesh(
+  new THREE.BoxGeometry(),
+  new THREE.MeshBasicMaterial({ color: "red" }),
+);
+
+scene.add(boxMesh);
+
+renderer.render(scene, camera);
+
+function animate() {
+  orbitControls.update();
+  world.fixedStep();
+  boxMesh.position.copy(canBody.position);
+  boxMesh.quaternion.copy(canBody.quaternion);
+
+  requestAnimationFrame(animate);
   renderer.render(scene, camera);
-  window.requestAnimationFrame(tick);
-
-  // Call tick again on the next frame
-};
-
-tick();
+}
+animate();
