@@ -1,54 +1,118 @@
 import * as THREE from "three";
-import * as CANNON from "cannon-es";
-import { OrbitControls } from "three/examples/jsm/Addons.js";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import * as dat from "lil-gui";
 
+/**
+ * Base
+ */
+// Debug
+const gui = new dat.GUI();
+
+// Canvas
+
+// Scene
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(
-  75,
-  window.innerWidth / window.innerHeight,
-  1,
-  500,
+
+/**
+ * Floor
+ */
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(10, 10),
+  new THREE.MeshStandardMaterial({
+    color: "#444444",
+    metalness: 0,
+    roughness: 0.5,
+  }),
 );
-camera.position.z = 3;
+floor.receiveShadow = true;
+floor.rotation.x = -Math.PI * 0.5;
+scene.add(floor);
 
-const world = new CANNON.World();
-world.gravity = new CANNON.Vec3(0, -9.28, 0);
+/**
+ * Lights
+ */
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+scene.add(ambientLight);
 
-const canShape = new CANNON.Vec3(0.5, 0.5, 0.5);
-const canBox = new CANNON.Box(canShape);
-const canBody = new CANNON.Body({
-  mass: 1,
-  shape: canBox,
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+directionalLight.castShadow = true;
+directionalLight.shadow.mapSize.set(1024, 1024);
+directionalLight.shadow.camera.far = 15;
+directionalLight.shadow.camera.left = -7;
+directionalLight.shadow.camera.top = 7;
+directionalLight.shadow.camera.right = 7;
+directionalLight.shadow.camera.bottom = -7;
+directionalLight.position.set(5, 5, 5);
+scene.add(directionalLight);
+
+/**
+ * Sizes
+ */
+const sizes = {
+  width: window.innerWidth,
+  height: window.innerHeight,
+};
+
+window.addEventListener("resize", () => {
+  // Update sizes
+  sizes.width = window.innerWidth;
+  sizes.height = window.innerHeight;
+
+  // Update camera
+  camera.aspect = sizes.width / sizes.height;
+  camera.updateProjectionMatrix();
+
+  // Update renderer
+  renderer.setSize(sizes.width, sizes.height);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 });
 
-canBody.position.y = 5;
-
-world.addBody(canBody);
-
-const renderer = new THREE.WebGLRenderer();
-renderer.setPixelRatio(Math.min(1, window.devicePixelRatio));
-renderer.setSize(window.innerWidth, window.innerHeight);
-const canvas = document.body.appendChild(renderer.domElement);
-
-const orbitControls = new OrbitControls(camera, canvas);
-orbitControls.update();
-
-const boxMesh = new THREE.Mesh(
-  new THREE.BoxGeometry(),
-  new THREE.MeshBasicMaterial({ color: "red" }),
+/**
+ * Camera
+ */
+// Base camera
+const camera = new THREE.PerspectiveCamera(
+  75,
+  sizes.width / sizes.height,
+  0.1,
+  100,
 );
+camera.position.set(2, 2, 2);
+scene.add(camera);
 
-scene.add(boxMesh);
+// Controls
+const controls = new OrbitControls(camera, canvas);
+controls.target.set(0, 0.75, 0);
+controls.enableDamping = true;
 
-renderer.render(scene, camera);
+/**
+ * Renderer
+ */
+const renderer = new THREE.WebGLRenderer();
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setSize(sizes.width, sizes.height);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const canvas = document.body.appendChild(renderer.domElement);
+/**
+ * Animate
+ */
+const clock = new THREE.Clock();
+let previousTime = 0;
 
-function animate() {
-  orbitControls.update();
-  world.fixedStep();
-  boxMesh.position.copy(canBody.position);
-  boxMesh.quaternion.copy(canBody.quaternion);
+const tick = () => {
+  const elapsedTime = clock.getElapsedTime();
+  const deltaTime = elapsedTime - previousTime;
+  previousTime = elapsedTime;
 
-  requestAnimationFrame(animate);
+  // Update controls
+  controls.update();
+
+  // Render
   renderer.render(scene, camera);
-}
-animate();
+
+  // Call tick again on the next frame
+  window.requestAnimationFrame(tick);
+};
+
+tick();
