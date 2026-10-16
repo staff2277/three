@@ -1,6 +1,8 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import * as dat from "lil-gui";
+import testVertexShader from "./shaders/test/vertex.glsl";
+import testFragmentShader from "./shaders/test/fragment.glsl";
 
 /**
  * Base
@@ -17,15 +19,13 @@ const scene = new THREE.Scene();
  * Floor
  */
 const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(10, 10),
-  new THREE.MeshStandardMaterial({
-    color: "#444444",
-    metalness: 0,
-    roughness: 0.5,
+  new THREE.PlaneGeometry(2, 2, 32, 32),
+  new THREE.RawShaderMaterial({
+    vertexShader: testVertexShader,
+    fragmentShader: testFragmentShader,
+    side: THREE.DoubleSide,
   }),
 );
-floor.receiveShadow = true;
-floor.rotation.x = -Math.PI * 0.5;
 scene.add(floor);
 
 /**
@@ -80,11 +80,6 @@ const camera = new THREE.PerspectiveCamera(
 camera.position.set(2, 2, 2);
 scene.add(camera);
 
-// Controls
-const controls = new OrbitControls(camera, canvas);
-controls.target.set(0, 0.75, 0);
-controls.enableDamping = true;
-
 /**
  * Renderer
  */
@@ -94,6 +89,13 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.setSize(sizes.width, sizes.height);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 const canvas = document.body.appendChild(renderer.domElement);
+
+/**
+ * Controls
+ */
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+
 /**
  * Animate
  */

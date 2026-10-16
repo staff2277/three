@@ -12,7 +12,8 @@
     "autoprefixer": "^10.6.1",
     "postcss": "^8.5.29",
     "tailwindcss": "^3.4.19",
-    "vite": "^7.1.7"
+    "vite": "^7.1.7",
+    "vite-plugin-glsl": "^1.6.2"
   },
   "dependencies": {
     "@nodetoy/three-nodetoy": "^0.1.36",
