@@ -18,15 +18,21 @@ const scene = new THREE.Scene();
 /**
  * Floor
  */
-const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(2, 2, 32, 32),
-  new THREE.RawShaderMaterial({
+const plane = new THREE.Mesh(
+  new THREE.PlaneGeometry(2, 2),
+  new THREE.ShaderMaterial({
     vertexShader: testVertexShader,
     fragmentShader: testFragmentShader,
     side: THREE.DoubleSide,
   }),
 );
-scene.add(floor);
+scene.add(plane);
+
+plane.material.uniforms.week = {
+  value: 0.7,
+};
+
+console.log(plane.geometry);
 
 /**
  * Lights
@@ -77,7 +83,7 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   100,
 );
-camera.position.set(2, 2, 2);
+camera.position.set(0, 0, 3);
 scene.add(camera);
 
 /**

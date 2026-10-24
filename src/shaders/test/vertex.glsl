@@ -1,9 +1,13 @@
-uniform mat4 projectionMatrix;
-uniform mat4 viewMatrix;
-uniform mat4 modelMatrix;
+varying vec2 vUv;
 
-attribute vec3 position;
+void main(){
+    vUv = uv;
+    vec4 modelPosition = modelMatrix * vec4(position, 1.0);
+    modelPosition.z += sin(position * 5 );
+    vec4 viewPosition = viewMatrix * modelPosition; 
+    //viewPosition.y += 2.0;
+    vec4 projectionPosition = projectionMatrix * viewPosition; 
+    //projectionPosition.x += 2.0;
 
-void main() {
-    gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);
+    gl_Position = projectionPosition ;
 }
