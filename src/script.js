@@ -9,7 +9,6 @@ import testFragmentShader from "./shaders/test/fragment.glsl";
  */
 // Debug
 const gui = new dat.GUI();
-
 // Canvas
 
 // Scene
@@ -18,12 +17,22 @@ const scene = new THREE.Scene();
 /**
  * Floor
  */
+
+const textureLoader = new THREE.TextureLoader();
+const texture = textureLoader.load("/images/textures/flag-french.jpg");
+
 const plane = new THREE.Mesh(
-  new THREE.PlaneGeometry(2, 2),
-  new THREE.ShaderMaterial({
+  new THREE.PlaneGeometry(2, 2, 32, 32),
+  new THREE.RawShaderMaterial({
     vertexShader: testVertexShader,
     fragmentShader: testFragmentShader,
+    wireframe: false,
     side: THREE.DoubleSide,
+    uniforms: {
+      uTime: { value: 0 },
+      uColor: { value: 0 },
+      utexture: { value: texture },
+    },
   }),
 );
 scene.add(plane);
@@ -31,8 +40,13 @@ scene.add(plane);
 plane.material.uniforms.week = {
   value: 0.7,
 };
-
-console.log(plane.geometry);
+const count = plane.geometry.attributes.position.count;
+const xArray = new Float32Array(count);
+for (let i = 0; i < count; i++) {
+  xArray[i] = Math.random();
+}
+console.log(xArray);
+plane.geometry.setAttribute("aRandom", new THREE.BufferAttribute(xArray, 1));
 
 /**
  * Lights
@@ -110,6 +124,7 @@ let previousTime = 0;
 
 const tick = () => {
   const elapsedTime = clock.getElapsedTime();
+  plane.material.uniforms.uTime.value = elapsedTime;
   const deltaTime = elapsedTime - previousTime;
   previousTime = elapsedTime;
 
@@ -122,5 +137,6 @@ const tick = () => {
   // Call tick again on the next frame
   window.requestAnimationFrame(tick);
 };
+console.log(plane.material.uniforms.uTime);
 
 tick();
