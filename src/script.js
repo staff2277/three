@@ -22,8 +22,8 @@ const textureLoader = new THREE.TextureLoader();
 const texture = textureLoader.load("/images/textures/flag-french.jpg");
 
 const plane = new THREE.Mesh(
-  new THREE.PlaneGeometry(2, 2, 32, 32),
-  new THREE.RawShaderMaterial({
+  new THREE.PlaneGeometry(2, 2, 2, 2),
+  new THREE.ShaderMaterial({
     vertexShader: testVertexShader,
     fragmentShader: testFragmentShader,
     wireframe: false,
@@ -45,7 +45,7 @@ const xArray = new Float32Array(count);
 for (let i = 0; i < count; i++) {
   xArray[i] = Math.random();
 }
-console.log(xArray);
+console.log(plane.geometry.attributes.uv.array);
 plane.geometry.setAttribute("aRandom", new THREE.BufferAttribute(xArray, 1));
 
 /**
@@ -104,6 +104,7 @@ scene.add(camera);
  * Renderer
  */
 const renderer = new THREE.WebGLRenderer();
+renderer.setClearColor("#0e1626");
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.setSize(sizes.width, sizes.height);
@@ -137,6 +138,5 @@ const tick = () => {
   // Call tick again on the next frame
   window.requestAnimationFrame(tick);
 };
-console.log(plane.material.uniforms.uTime);
 
 tick();
