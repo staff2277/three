@@ -104,7 +104,7 @@ scene.add(camera);
  * Renderer
  */
 const renderer = new THREE.WebGLRenderer();
-renderer.setClearColor("#0e1626");
+renderer.setClearColor("#0f0012");
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.setSize(sizes.width, sizes.height);
